@@ -32,7 +32,7 @@ public class AuthService
     public string GerarHashSenha(string senha)
 {
     var config = new Argon2Config
-    {
+    {   
         Type = Argon2Type.DataIndependentAddressing,
         Version = Argon2Version.Nineteen,
         TimeCost = 3,          
