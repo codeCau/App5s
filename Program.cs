@@ -9,18 +9,17 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configuração do PostgreSQL com DbContextFactory para compatibilidade Blazor Server
+
 builder.Services.AddDbContextFactory<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Configuração de Autenticação por Cookies
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
         options.Cookie.Name = "App5s.Auth";
         options.LoginPath = "/login";
         options.AccessDeniedPath = "/acesso-negado";
-        options.ExpireTimeSpan = TimeSpan.FromHours(8);
+        options.ExpireTimeSpan = TimeSpan.FromHours(2);
         options.SlidingExpiration = true;
     });
 
@@ -48,17 +47,21 @@ app.UseAntiforgery();
 
 app.MapStaticAssets();
 
-// Endpoint HTTP para criar o Cookie de Sessão
+
 app.MapPost("/api/auth/login", async (
     [FromForm] string email,
     [FromForm] string senha,
+    [FromForm] string? returnUrl,
     [FromServices] AuthService authService,
     HttpContext httpContext) =>
 {
     var usuario = await authService.ValidarCredenciaisAsync(email, senha);
     if (usuario is null)
     {
-        return Results.Redirect("/login?error=true");
+        var redirectErro = string.IsNullOrEmpty(returnUrl) 
+            ? "/login?error=true" 
+            : $"/login?error=true&returnUrl={Uri.EscapeDataString(returnUrl)}";
+        return Results.Redirect(redirectErro);
     }
 
     var claims = new List<Claim>
@@ -81,10 +84,13 @@ app.MapPost("/api/auth/login", async (
         new ClaimsPrincipal(claimsIdentity),
         authProperties);
 
-    return Results.Redirect("/");
+    string destino = !string.IsNullOrWhiteSpace(returnUrl) && returnUrl.StartsWith('/') 
+        ? returnUrl 
+        : "/";
+
+    return Results.Redirect(destino);
 }).DisableAntiforgery();
 
-// Endpoint de Logout
 app.MapGet("/api/auth/logout", async (HttpContext httpContext) =>
 {
     await httpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);

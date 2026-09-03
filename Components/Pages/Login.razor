@@ -1,0 +1,68 @@
+@page "/login"
+@using Microsoft.AspNetCore.Authorization
+@attribute [AllowAnonymous]
+@inject NavigationManager Navigation
+
+<PageTitle>Login - App 5S</PageTitle>
+
+<div class="login-wrapper">
+    <div class="login-card">
+        <div class="login-header text-center">
+            <h2 class="fw-bold">App 5S</h2>
+            <p class="text-muted">Sistema de Auditoria Interna</p>
+        </div>
+
+        @if (TemErro)
+        {
+            <div class="alert alert-danger py-2" role="alert">
+                E-mail ou senha inválidos.
+            </div>
+        }
+
+        <form method="post" action="/api/auth/login">
+            <input type="hidden" name="returnUrl" value="@ReturnUrl" />
+
+            <div class="mb-3">
+                <label for="email" class="form-label fw-semibold">E-mail</label>
+                <input type="email" id="email" name="email" class="form-control" placeholder="exemplo@email.com" required autofocus />
+            </div>
+
+            <div class="mb-4">
+                <label for="senha" class="form-label fw-semibold">Senha</label>
+                <input type="password" id="senha" name="senha" class="form-control" placeholder="••••••••" required />
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold">
+                Entrar
+            </button>
+        </form>
+    </div>
+</div>
+
+<style>
+    .login-wrapper {
+        min-height: 80vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+    }
+    .login-card {
+        width: 100%;
+        max-width: 400px;
+        background: #ffffff;
+        border-radius: 10px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        padding: 2rem;
+    }
+</style>
+
+@code {
+    [SupplyParameterFromQuery]
+    private bool? Error { get; set; }
+
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
+    private bool TemErro => Error == true;
+}
