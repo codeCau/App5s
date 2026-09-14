@@ -1,0 +1,116 @@
+@page "/setup"
+@rendermode InteractiveServer
+@using App5s.Data
+@using App5s.Models
+@using Isopoh.Cryptography.Argon2
+@using Microsoft.EntityFrameworkCore
+@inject AppDbContext Db
+@inject NavigationManager NavigationManager
+
+<div class="container py-5" style="max-width: 500px;">
+    <div class="card shadow border-0">
+        <div class="card-header bg-dark text-white py-3 text-center">
+            <h4 class="mb-0">Configuração Inicial — App5S</h4>
+            <small class="text-white-50">Cadastre o Administrador Principal</small>
+        </div>
+        <div class="card-body p-4">
+            @if (!bancoVazio)
+            {
+                <div class="alert alert-warning mb-3">
+                    O sistema já possui usuários cadastrados. A configuração inicial está desativada.
+                </div>
+                <a href="/login" class="btn btn-primary w-100">Ir para o Login</a>
+            }
+            else
+            {
+                @if (!string.IsNullOrEmpty(erro))
+                {
+                    <div class="alert alert-danger mb-3">@erro</div>
+                }
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Nome Completo</label>
+                    <input class="form-control" @bind="nome" placeholder="Ex: Gestor 5S" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">E-mail</label>
+                    <input type="email" class="form-control" @bind="email" placeholder="admin@empresa.com" />
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">Senha Master</label>
+                    <input type="password" class="form-control" @bind="senha" placeholder="Mínimo 6 caracteres" />
+                </div>
+
+                <button class="btn btn-success w-100 fw-semibold" @onclick="CadastrarAdminInicial" disabled="@processando">
+                    @if (processando)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                        <span>Criando administrador...</span>
+                    }
+                    else
+                    {
+                        <span>Inicializar Sistema</span>
+                    }
+                </button>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private string nome = string.Empty;
+    private string email = string.Empty;
+    private string senha = string.Empty;
+    private string? erro;
+    private bool bancoVazio = true;
+    private bool processando;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            bancoVazio = !await Db.Usuarios.AnyAsync();
+        }
+        catch (Exception ex)
+        {
+            erro = $"Erro ao verificar banco: {ex.Message}";
+        }
+    }
+
+    private async Task CadastrarAdminInicial()
+    {
+        if (string.IsNullOrWhiteSpace(nome) || string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(senha) || senha.Length < 6)
+        {
+            erro = "Preencha todos os campos corretamente (a senha precisa ter no mínimo 6 caracteres).";
+            return;
+        }
+
+        processando = true;
+        erro = null;
+
+        try
+        {
+            var admin = new Usuario
+            {
+                Nome = nome.Trim(),
+                Email = email.Trim().ToLowerInvariant(),
+                SenhaHash = Argon2.Hash(senha),
+                Perfil = "Admin",
+                Ativo = true,
+                CriadoEm = DateTime.UtcNow
+            };
+
+            Db.Usuarios.Add(admin);
+            await Db.SaveChangesAsync();
+
+            NavigationManager.NavigateTo("/login", forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            erro = $"Falha ao gravar no PostgreSQL: {ex.Message}";
+            processando = false;
+        }
+    }
+}

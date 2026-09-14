@@ -54,6 +54,36 @@
         </AuthorizeView>
     </nav>
 </div>
+<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+    <nav class="flex-column">
+        <!-- Links públicos ou para qualquer usuário autenticado -->
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Início
+            </NavLink>
+        </div>
+
+        <AuthorizeView>
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="auditorias">
+                        <span class="bi bi-clipboard-check-fill-nav-menu" aria-hidden="true"></span> Auditorias
+                    </NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+
+        <AuthorizeView Roles="Admin">
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="admin/usuarios">
+                        <span class="bi bi-people-fill-nav-menu" aria-hidden="true"></span> Gerenciar Usuários
+                    </NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+    </nav>
+</div>
 
 @code {
     private bool collapseNavMenu = true;
