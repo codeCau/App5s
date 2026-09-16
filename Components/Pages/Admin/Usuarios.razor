@@ -1,0 +1,193 @@
+@page "/admin/usuarios"
+@using App5s.Models
+@using App5s.Services
+@using Microsoft.AspNetCore.Authorization
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Admin")]
+@inject UsuarioService UsuarioService
+
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="h3 fw-bold mb-0">Painel do Administrador</h2>
+            <p class="text-muted mb-0">Gerenciamento de contas e permissões de acesso</p>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(mensagemAlerta))
+    {
+        <div class="alert @(isSucesso ? "alert-success" : "alert-danger") alert-dismissible fade show" role="alert">
+            @mensagemAlerta
+            <button type="button" class="btn-close" @onclick="() => mensagemAlerta = null"></button>
+        </div>
+    }
+
+    <div class="row g-4">
+        <!-- Formulário de Cadastro -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-primary text-white py-3">
+                    <h5 class="card-title mb-0 fs-6 fw-semibold">Cadastrar Novo Usuário</h5>
+                </div>
+                <div class="card-body p-4">
+                    <EditForm Model="novoUsuario" OnValidSubmit="SalvarUsuarioAsync">
+                        <DataAnnotationsValidator />
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Nome Completo</label>
+                            <InputText class="form-control" placeholder="Ex: Roberto Silva" @bind-Value="novoUsuario.Nome" />
+                            <ValidationMessage For="() => novoUsuario.Nome" class="text-danger small" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">E-mail</label>
+                            <InputText class="form-control" placeholder="nome@dominio.com" @bind-Value="novoUsuario.Email" />
+                            <ValidationMessage For="() => novoUsuario.Email" class="text-danger small" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Senha Provisória</label>
+                            <InputText type="password" class="form-control" placeholder="Mínimo 6 caracteres" @bind-Value="novoUsuario.Senha" />
+                            <ValidationMessage For="() => novoUsuario.Senha" class="text-danger small" />
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">Perfil de Acesso</label>
+                            <InputSelect class="form-select" @bind-Value="novoUsuario.Perfil">
+                                <option value="Auditor">Auditor (Operacional 5S)</option>
+                                <option value="Supervisor">Supervisor (Gestor de Setor)</option>
+                                <option value="Admin">Administrador (Acesso Total)</option>
+                            </InputSelect>
+                            <ValidationMessage For="() => novoUsuario.Perfil" class="text-danger small" />
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100 fw-semibold" disabled="@carregando">
+                            @if (carregando)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                <span>Cadastrando...</span>
+                            }
+                            else
+                            {
+                                <span>Criar Conta</span>
+                            }
+                        </button>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabela de Usuários Cadastrados -->
+        <div class="col-lg-8">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0 fs-6 fw-semibold text-dark">Usuários Cadastrados (@usuarios.Count)</h5>
+                    <button class="btn btn-sm btn-outline-secondary" @onclick="CarregarListaAsync">
+                        Atualizar Lista
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>E-mail</th>
+                                    <th>Perfil</th>
+                                    <th>Status</th>
+                                    <th>Criado em</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (!usuarios.Any())
+                                {
+                                    <tr>
+                                        <td colspan="5" class="text-center py-4 text-muted">
+                                            Nenhum usuário registrado além do padrão.
+                                        </td>
+                                    </tr>
+                                }
+                                else
+                                {
+                                    @foreach (var u in usuarios)
+                                    {
+                                        <tr>
+                                            <td class="fw-semibold">@u.Nome</td>
+                                            <td>@u.Email</td>
+                                            <td>
+                                                <span class="badge @ObterBadgePerfil(u.Perfil)">
+                                                    @u.Perfil
+                                                </span>
+                                            </td>
+                                            <td>
+                                                @if (u.Ativo)
+                                                {
+                                                    <span class="badge bg-success-subtle text-success border border-success-subtle">Ativo</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">Inativo</span>
+                                                }
+                                            </td>
+                                            <td class="text-muted small">@u.CriadoEm.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private NovoUsuarioDto novoUsuario = new();
+    private List<Usuario> usuarios = new();
+    private string? mensagemAlerta;
+    private bool isSucesso;
+    private bool carregando;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CarregarListaAsync();
+    }
+
+    private async Task CarregarListaAsync()
+    {
+        usuarios = await UsuarioService.ObterTodosAsync();
+    }
+
+    private async Task SalvarUsuarioAsync()
+    {
+        carregando = true;
+        mensagemAlerta = null;
+
+        var (sucesso, erro) = await UsuarioService.CriarUsuarioAsync(novoUsuario);
+
+        if (sucesso)
+        {
+            isSucesso = true;
+            mensagemAlerta = $"Usuário '{novoUsuario.Nome}' cadastrado com sucesso!";
+            novoUsuario = new NovoUsuarioDto(); // Limpa o formulário
+            await CarregarListaAsync();         // Atualiza a tabela
+        }
+        else
+        {
+            isSucesso = false;
+            mensagemAlerta = erro;
+        }
+
+        carregando = false;
+    }
+
+    private string ObterBadgePerfil(string perfil) => perfil switch
+    {
+        "Admin" => "bg-danger",
+        "Supervisor" => "bg-warning text-dark",
+        "Auditor" => "bg-info text-dark",
+        _ => "bg-secondary"
+    };
+}

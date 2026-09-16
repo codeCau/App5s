@@ -2,10 +2,12 @@ using System.Security.Claims;
 using App5s.Components;
 using App5s.Data;
 using App5s.Services;
+using App5s.Models;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Isopoh.Cryptography.Argon2;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,6 +28,7 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 builder.Services.AddAuthorization();
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<UsuarioService>();
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();

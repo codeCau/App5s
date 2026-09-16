@@ -1,7 +1,11 @@
 @page "/login"
 @using Microsoft.AspNetCore.Authorization
+@using App5s.Data
+@using Microsoft.EntityFrameworkCore
 @attribute [AllowAnonymous]
 @inject NavigationManager Navigation
+@inject NavigationManager NavigationManager
+@inject AppDbContext Db
 
 <PageTitle>Login - App 5S</PageTitle>
 
@@ -65,4 +69,25 @@
     private string? ReturnUrl { get; set; }
 
     private bool TemErro => Error == true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var existeUsuarios = await Db.Usuarios.AnyAsync();
+        if (!existeUsuarios)
+        {
+            NavigationManager.NavigateTo("/setup");
+        }
+    }
+
+    private void RedirecionarAposLogin(string perfil)
+    {
+        if (perfil.Equals("Admin", StringComparison.OrdinalIgnoreCase))
+        {
+            NavigationManager.NavigateTo("/admin/usuarios", forceLoad: true);
+        }
+        else
+        {
+            NavigationManager.NavigateTo("/auditorias", forceLoad: true);
+        }
+    }
 }
