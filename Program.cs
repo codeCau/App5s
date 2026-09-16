@@ -29,10 +29,11 @@ builder.Services.AddAuthorization();
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<UsuarioService>();
+builder.Services.AddScoped<LogService>();
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
-
+    
 var app = builder.Build();
 
 if (!app.Environment.IsDevelopment())

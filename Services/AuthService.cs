@@ -8,10 +8,12 @@ namespace App5s.Services;
 public class AuthService
 {
     private readonly IDbContextFactory<AppDbContext> _contextFactory;
+    private readonly LogService _logService;
 
-    public AuthService(IDbContextFactory<AppDbContext> contextFactory)
+    public AuthService(IDbContextFactory<AppDbContext> contextFactory, LogService logService)
     {
         _contextFactory = contextFactory;
+        _logService = logService;
     }
 
     public async Task<Usuario?> ValidarCredenciaisAsync(string email, string senha)
@@ -28,7 +30,15 @@ public class AuthService
             .FirstOrDefaultAsync(u => u.Email.ToLower() == emailNormalizado && u.Ativo);
 
         if (usuario is null || string.IsNullOrEmpty(usuario.SenhaHash))
+        {
+        await _logService.RegistrarAsync(
+                "WARNING", 
+                "Tentativa de login com usuário inexistente ou inativo", 
+                origem: "AuthService", 
+                usuarioEmail: emailNormalizado
+            );
             return null;
+        }
 
         try
         {
