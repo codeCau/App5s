@@ -1,76 +1,100 @@
 @page "/admin/usuarios"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Admin")]
+@using App5s.Data
 @using App5s.Models
 @using App5s.Services
 @using Microsoft.AspNetCore.Authorization
-@rendermode InteractiveServer
-@attribute [Authorize(Roles = "Admin")]
-@inject UsuarioService UsuarioService
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject AuthService AuthService
+@inject LogService LogService
 
-
-<div class="container-fluid py-4">
+<div class="container-fluid py-4 px-lg-5">
+    
+    <!-- Cabeçalho -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h2 class="h3 fw-bold mb-0">Painel do Administrador</h2>
-            <p class="text-muted mb-0">Gerenciamento de contas e permissões de acesso</p>
+            <h3 class="fw-bold mb-1 text-dark">Gestão de Usuários</h3>
+            <p class="text-secondary small mb-0">Cadastre e gerencie os acessos de administradores e auditores</p>
         </div>
+        <span class="badge bg-light text-dark border px-3 py-2 rounded-pill small">
+            <i class="bi bi-people-fill text-primary me-1"></i> Total: @usuarios.Count
+        </span>
     </div>
 
+    <!-- Alertas Globais -->
     @if (!string.IsNullOrEmpty(mensagemAlerta))
     {
-        <div class="alert @(isSucesso ? "alert-success" : "alert-danger") alert-dismissible fade show" role="alert">
+        <div class="alert @(tipoAlerta == "success" ? "alert-success" : "alert-danger") alert-dismissible fade show border-0 rounded-3 shadow-sm py-2 px-3 small mb-4" role="alert">
+            <i class="bi @(tipoAlerta == "success" ? "bi-check-circle-fill" : "bi-exclamation-triangle-fill") me-2"></i>
             @mensagemAlerta
-            <button type="button" class="btn-close" @onclick="() => mensagemAlerta = null"></button>
+            <button type="button" class="btn-close py-2" @onclick="() => mensagemAlerta = null"></button>
         </div>
     }
 
     <div class="row g-4">
-        <!-- Formulário de Cadastro -->
+        
+        <!-- Formulário de Cadastro (Coluna Esquerda) -->
         <div class="col-lg-4">
-            <div class="card shadow-sm border-0">
-                <div class="card-header bg-primary text-white py-3">
-                    <h5 class="card-title mb-0 fs-6 fw-semibold">Cadastrar Novo Usuário</h5>
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-header bg-white border-0 pt-4 pb-2 px-4">
+                    <h5 class="fw-bold mb-1">Novo Usuário</h5>
+                    <p class="text-muted small mb-0">Preencha os dados de acesso</p>
                 </div>
-                <div class="card-body p-4">
-                    <EditForm Model="novoUsuario" OnValidSubmit="SalvarUsuarioAsync">
+                <div class="card-body px-4 pb-4 pt-2">
+                    <EditForm Model="@novoUsuario" OnValidSubmit="CadastrarUsuario">
                         <DataAnnotationsValidator />
 
                         <div class="mb-3">
-                            <label class="form-label fw-semibold">Nome Completo</label>
-                            <InputText class="form-control" placeholder="Ex: Roberto Silva" @bind-Value="novoUsuario.Nome" />
-                            <ValidationMessage For="() => novoUsuario.Nome" class="text-danger small" />
+                            <label class="form-label small fw-semibold text-secondary">Nome Completo</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-person"></i></span>
+                                <input type="text" class="form-control border-start-0 ps-0" placeholder="Ex: Lucas Silva" 
+                                       @bind="novoUsuario.Nome" required />
+                            </div>
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label fw-semibold">E-mail</label>
-                            <InputText class="form-control" placeholder="nome@dominio.com" @bind-Value="novoUsuario.Email" />
-                            <ValidationMessage For="() => novoUsuario.Email" class="text-danger small" />
+                            <label class="form-label small fw-semibold text-secondary">E-mail</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-envelope"></i></span>
+                                <input type="email" class="form-control border-start-0 ps-0" placeholder="lucas@empresa.com" 
+                                       @bind="novoUsuario.Email" required />
+                            </div>
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label fw-semibold">Senha Provisória</label>
-                            <InputText type="password" class="form-control" placeholder="Mínimo 6 caracteres" @bind-Value="novoUsuario.Senha" />
-                            <ValidationMessage For="() => novoUsuario.Senha" class="text-danger small" />
+                            <label class="form-label small fw-semibold text-secondary">Perfil de Acesso</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-shield-lock"></i></span>
+                                <select class="form-select border-start-0 ps-0" @bind="novoUsuario.Perfil">
+                                    <option value="Auditor">Auditor (Executa vistorias)</option>
+                                    <option value="Supervisor">Supervisor de Time (Acompanha setor e ações)</option>
+                                    <option value="Admin">Administrador (Controle total)</option>
+                                </select>
+                            </div>
                         </div>
 
                         <div class="mb-4">
-                            <label class="form-label fw-semibold">Perfil de Acesso</label>
-                            <InputSelect class="form-select" @bind-Value="novoUsuario.Perfil">
-                                <option value="Auditor">Auditor (Operacional 5S)</option>
-                                <option value="Supervisor">Supervisor (Gestor de Setor)</option>
-                                <option value="Admin">Administrador (Acesso Total)</option>
-                            </InputSelect>
-                            <ValidationMessage For="() => novoUsuario.Perfil" class="text-danger small" />
+                            <label class="form-label small fw-semibold text-secondary">Senha de Acesso</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-key"></i></span>
+                                <input type="password" class="form-control border-start-0 ps-0" placeholder="Mínimo 6 caracteres" 
+                                       @bind="novoUsuario.Senha" required />
+                            </div>
                         </div>
 
-                        <button type="submit" class="btn btn-primary w-100 fw-semibold" disabled="@carregando">
-                            @if (carregando)
+                        <button type="submit" class="btn btn-primary w-100 py-2 rounded-3 fw-semibold shadow-sm" disabled="@salvando">
+                            @if (salvando)
                             {
-                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                <span class="spinner-border spinner-border-sm me-2"></span>
                                 <span>Cadastrando...</span>
                             }
                             else
                             {
-                                <span>Criar Conta</span>
+                                <i class="bi bi-plus-lg me-1"></i>
+                                <span>Cadastrar Acesso</span>
                             }
                         </button>
                     </EditForm>
@@ -78,116 +102,253 @@
             </div>
         </div>
 
-        <!-- Tabela de Usuários Cadastrados -->
+        <!-- Tabela e Filtros (Coluna Direita) -->
         <div class="col-lg-8">
-            <div class="card shadow-sm border-0">
-                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                    <h5 class="card-title mb-0 fs-6 fw-semibold text-dark">Usuários Cadastrados (@usuarios.Count)</h5>
-                    <button class="btn btn-sm btn-outline-secondary" @onclick="CarregarListaAsync">
-                        Atualizar Lista
-                    </button>
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                
+                <!-- Barra de Pesquisa e Filtros -->
+                <div class="card-header bg-white border-0 pt-4 pb-3 px-4">
+                    <div class="row g-2 align-items-center justify-content-between">
+                        <div class="col-sm-6 col-md-7">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                                <input type="text" class="form-control border-start-0 ps-0" placeholder="Buscar por nome ou e-mail..." 
+                                       @bind="termoBusca" @bind:event="oninput" />
+                            </div>
+                        </div>
+                        <div class="col-sm-6 col-md-4 text-sm-end">
+                            <select class="form-select form-select-sm" @bind="filtroPerfil">
+                                <option value="TODOS">Todos os perfis</option>
+                                <option value="Admin">Apenas Admins</option>
+                                <option value="Supervisor">Apenas Supervisores</option>
+                                <option value="Auditor">Apenas Auditores</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead class="table-light">
+
+                <!-- Tabela de Registros -->
+                <div class="table-responsive px-4 pb-3">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="text-secondary small border-bottom border-light-subtle">
+                            <tr>
+                                <th class="fw-semibold">USUÁRIO</th>
+                                <th class="fw-semibold">PERFIL</th>
+                                <th class="fw-semibold">STATUS</th>
+                                <th class="fw-semibold text-end">AÇÕES</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (carregando)
+                            {
                                 <tr>
-                                    <th>Nome</th>
-                                    <th>E-mail</th>
-                                    <th>Perfil</th>
-                                    <th>Status</th>
-                                    <th>Criado em</th>
+                                    <td colspan="4" class="text-center py-5 text-muted">
+                                        <div class="spinner-border spinner-border-sm me-2"></div> Carregando dados...
+                                    </td>
                                 </tr>
-                            </thead>
-                            <tbody>
-                                @if (!usuarios.Any())
+                            }
+                            else if (!UsuariosFiltrados.Any())
+                            {
+                                <tr>
+                                    <td colspan="4" class="text-center py-5 text-muted">
+                                        <i class="bi bi-inbox fs-2 d-block mb-1"></i>
+                                        Nenhum usuário encontrado.
+                                    </td>
+                                </tr>
+                            }
+                            else
+                            {
+                                @foreach (var u in UsuariosFiltrados)
                                 {
                                     <tr>
-                                        <td colspan="5" class="text-center py-4 text-muted">
-                                            Nenhum usuário registrado além do padrão.
+                                        <td>
+                                            <div class="d-flex align-items-center gap-3">
+                                                <div class="d-flex align-items-center justify-content-center rounded-circle bg-primary bg-opacity-10 text-primary fw-bold" style="width: 38px; height: 38px; font-size: 0.85rem;">
+                                                    @(string.IsNullOrEmpty(u.Nome) ? "?" : u.Nome[0].ToString().ToUpper())
+                                                </div>
+                                                <div>
+                                                    <div class="fw-semibold text-dark mb-0" style="font-size: 0.9rem;">@u.Nome</div>
+                                                    <div class="text-secondary small">@u.Email</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            @if (u.Perfil.Equals("Admin", StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                <span class="badge bg-purple-subtle text-purple border border-purple-subtle px-2 py-1 rounded-pill small" style="background-color: #f3e8ff; color: #7e22ce; border-color: #e9d5ff;">
+                                                    <i class="bi bi-shield-fill me-1"></i> Admin
+                                                </span>
+                                            }
+                                            else if (u.Perfil.Equals("Supervisor", StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                <span class="badge px-2 py-1 rounded-pill small" style="background-color: #fef3c7; color: #b45309; border: 1px solid #fde68a;">
+                                                    <i class="bi bi-person-check-fill me-1"></i> Supervisor
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-info-subtle text-info border border-info-subtle px-2 py-1 rounded-pill small" style="background-color: #e0f2fe; color: #0369a1; border-color: #bae6fd;">
+                                                    <i class="bi bi-person-badge me-1"></i> Auditor
+                                                </span> 
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (u.Ativo)
+                                            {
+                                                <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 rounded-pill small" style="background-color: #dcfce7; color: #15803d; border-color: #bbf7d0;">
+                                                    Ativo
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-secondary-subtle text-secondary border px-2 py-1 rounded-pill small" style="background-color: #f3f4f6; color: #6b7280;">
+                                                    Inativo
+                                                </span>
+                                            }
+                                        </td>
+                                        <td class="text-end">
+                                            <button class="btn btn-sm @(u.Ativo ? "btn-outline-danger" : "btn-outline-success") rounded-3 px-2 py-1" 
+                                                    title="@(u.Ativo ? "Desativar acesso" : "Ativar acesso")" 
+                                                    @onclick="() => AlternarStatusUsuario(u)">
+                                                <i class="bi @(u.Ativo ? "bi-person-x" : "bi-person-check")"></i>
+                                            </button>
                                         </td>
                                     </tr>
                                 }
-                                else
-                                {
-                                    @foreach (var u in usuarios)
-                                    {
-                                        <tr>
-                                            <td class="fw-semibold">@u.Nome</td>
-                                            <td>@u.Email</td>
-                                            <td>
-                                                <span class="badge @ObterBadgePerfil(u.Perfil)">
-                                                    @u.Perfil
-                                                </span>
-                                            </td>
-                                            <td>
-                                                @if (u.Ativo)
-                                                {
-                                                    <span class="badge bg-success-subtle text-success border border-success-subtle">Ativo</span>
-                                                }
-                                                else
-                                                {
-                                                    <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">Inativo</span>
-                                                }
-                                            </td>
-                                            <td class="text-muted small">@u.CriadoEm.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
-                                        </tr>
-                                    }
-                                }
-                            </tbody>
-                        </table>
-                    </div>
+                            }
+                        </tbody>
+                    </table>
                 </div>
+
             </div>
         </div>
+
     </div>
 </div>
 
 @code {
-    private NovoUsuarioDto novoUsuario = new();
     private List<Usuario> usuarios = new();
+    private NovoUsuarioModel novoUsuario = new();
+    private string termoBusca = string.Empty;
+    private string filtroPerfil = "TODOS";
     private string? mensagemAlerta;
-    private bool isSucesso;
-    private bool carregando;
+    private string tipoAlerta = "success";
+    private bool carregando = true;
+    private bool salvando;
+
+    private IEnumerable<Usuario> UsuariosFiltrados =>
+        usuarios.Where(u =>
+            (filtroPerfil == "TODOS" || u.Perfil.Equals(filtroPerfil, StringComparison.OrdinalIgnoreCase)) &&
+            (string.IsNullOrWhiteSpace(termoBusca) ||
+             u.Nome.Contains(termoBusca, StringComparison.OrdinalIgnoreCase) ||
+             u.Email.Contains(termoBusca, StringComparison.OrdinalIgnoreCase)));
 
     protected override async Task OnInitializedAsync()
     {
-        await CarregarListaAsync();
+        await CarregarUsuarios();
     }
 
-    private async Task CarregarListaAsync()
-    {
-        usuarios = await UsuarioService.ObterTodosAsync();
-    }
-
-    private async Task SalvarUsuarioAsync()
+    private async Task CarregarUsuarios()
     {
         carregando = true;
-        mensagemAlerta = null;
-
-        var (sucesso, erro) = await UsuarioService.CriarUsuarioAsync(novoUsuario);
-
-        if (sucesso)
-        {
-            isSucesso = true;
-            mensagemAlerta = $"Usuário '{novoUsuario.Nome}' cadastrado com sucesso!";
-            novoUsuario = new NovoUsuarioDto(); // Limpa o formulário
-            await CarregarListaAsync();         // Atualiza a tabela
-        }
-        else
-        {
-            isSucesso = false;
-            mensagemAlerta = erro;
-        }
-
+        await using var db = await DbFactory.CreateDbContextAsync();
+        usuarios = await db.Usuarios.AsNoTracking().OrderBy(u => u.Nome).ToListAsync();
         carregando = false;
     }
 
-    private string ObterBadgePerfil(string perfil) => perfil switch
+    private async Task CadastrarUsuario()
     {
-        "Admin" => "bg-danger",
-        "Supervisor" => "bg-warning text-dark",
-        "Auditor" => "bg-info text-dark",
-        _ => "bg-secondary"
-    };
-}
+        if (novoUsuario.Senha.Length < 6)
+        {
+            MostrarAlerta("A senha deve ter pelo menos 6 caracteres.", "danger");
+            return;
+        }
+
+        salvando = true;
+
+        try
+        {
+            await using var db = await DbFactory.CreateDbContextAsync();
+            var emailNormalizado = novoUsuario.Email.Trim().ToLowerInvariant();
+
+            if (await db.Usuarios.AnyAsync(u => u.Email.ToLower() == emailNormalizado))
+            {
+                MostrarAlerta("Este e-mail já está cadastrado no sistema.", "danger");
+                return;
+            }
+
+            var usuario = new Usuario
+            {
+                Nome = novoUsuario.Nome.Trim(),
+                Email = emailNormalizado,
+                SenhaHash = AuthService.GerarHashSenha(novoUsuario.Senha),
+                Perfil = novoUsuario.Perfil,
+                Ativo = true,
+                CriadoEm = DateTime.UtcNow
+            };
+
+            db.Usuarios.Add(usuario);
+            await db.SaveChangesAsync();
+
+            await LogService.RegistrarAsync(
+                "INFO", 
+                $"Novo usuário cadastrado ({usuario.Perfil}): {usuario.Nome}", 
+                origem: "Admin/Usuarios", 
+                usuarioEmail: usuario.Email
+            );
+
+            novoUsuario = new();
+            MostrarAlerta("Usuário cadastrado com sucesso!", "success");
+            await CarregarUsuarios();
+        }
+        catch (Exception ex)
+        {
+            MostrarAlerta($"Falha ao salvar usuário: {ex.Message}", "danger");
+        }
+        finally
+        {
+            salvando = false;
+        }
+    }
+
+    private async Task AlternarStatusUsuario(Usuario u)
+    {
+        try
+        {
+            await using var db = await DbFactory.CreateDbContextAsync();
+            var usuarioDb = await db.Usuarios.FindAsync(u.Id);
+            if (usuarioDb == null) return;
+
+            usuarioDb.Ativo = !usuarioDb.Ativo;
+            await db.SaveChangesAsync();
+
+            await LogService.RegistrarAsync(
+                "WARNING", 
+                $"Status do usuário alterado para {(usuarioDb.Ativo ? "Ativo" : "Inativo")}", 
+                origem: "Admin/Usuarios", 
+                usuarioEmail: usuarioDb.Email
+            );
+
+            u.Ativo = usuarioDb.Ativo;
+            MostrarAlerta($"Status de {u.Nome} alterado com sucesso.", "success");
+        }
+        catch (Exception ex)
+        {
+            MostrarAlerta($"Erro ao atualizar status: {ex.Message}", "danger");
+        }
+    }
+
+    private void MostrarAlerta(string mensagem, string tipo)
+    {
+        mensagemAlerta = mensagem;
+        tipoAlerta = tipo;
+    }
+
+    public class NovoUsuarioModel
+    {
+        public string Nome { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string Perfil { get; set; } = "Auditor";
+        public string Senha { get; set; } = string.Empty;
+    }
+}   

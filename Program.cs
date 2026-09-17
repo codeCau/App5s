@@ -52,20 +52,17 @@ app.UseAntiforgery();
 app.MapStaticAssets();
 
 
-app.MapPost("/api/auth/login", async (
+app.MapPost("/auth/login", async (
+    HttpContext httpContext,
     [FromForm] string email,
     [FromForm] string senha,
-    [FromForm] string? returnUrl,
-    [FromServices] AuthService authService,
-    HttpContext httpContext) =>
+    AuthService authService) =>
 {
     var usuario = await authService.ValidarCredenciaisAsync(email, senha);
-    if (usuario is null)
+
+    if (usuario == null)
     {
-        var redirectErro = string.IsNullOrEmpty(returnUrl) 
-            ? "/login?error=true" 
-            : $"/login?error=true&returnUrl={Uri.EscapeDataString(returnUrl)}";
-        return Results.Redirect(redirectErro);
+        return Results.Redirect("/login?error=true");
     }
 
     var claims = new List<Claim>
@@ -88,11 +85,12 @@ app.MapPost("/api/auth/login", async (
         new ClaimsPrincipal(claimsIdentity),
         authProperties);
 
-    string destino = !string.IsNullOrWhiteSpace(returnUrl) && returnUrl.StartsWith('/') 
-        ? returnUrl 
-        : "/";
+    if (usuario.Perfil.Equals("Admin", StringComparison.OrdinalIgnoreCase))
+    {
+        return Results.Redirect("/admin/usuarios");
+    }
 
-    return Results.Redirect(destino);
+    return Results.Redirect("/auditorias");
 }).DisableAntiforgery();
 
 app.MapGet("/api/auth/logout", async (HttpContext httpContext) =>

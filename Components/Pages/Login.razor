@@ -1,72 +1,71 @@
 @page "/login"
-@using Microsoft.AspNetCore.Authorization
 @using App5s.Data
 @using Microsoft.EntityFrameworkCore
-@attribute [AllowAnonymous]
-@inject NavigationManager Navigation
-@inject NavigationManager NavigationManager
 @inject AppDbContext Db
+@inject NavigationManager NavigationManager
 
-<PageTitle>Login - App 5S</PageTitle>
+<div class="d-flex align-items-center justify-content-center min-vh-100 bg-light px-3">
+    <div class="card border-0 shadow-sm rounded-4 w-100" style="max-width: 420px;">
+        <div class="card-body p-4 p-sm-5">
+            
+            <!-- Cabeçalho / Logo -->
+            <div class="text-center mb-4">
+                <div class="d-inline-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary rounded-circle mb-3" style="width: 56px; height: 56px;">
+                    <i class="bi bi-shield-check fs-2"></i>
+                </div>
+                <h4 class="fw-bold mb-1 text-dark">App 5S</h4>
+                <p class="text-secondary small mb-0">Auditoria e Qualidade Operacional</p>
+            </div>
 
-<div class="login-wrapper">
-    <div class="login-card">
-        <div class="login-header text-center">
-            <h2 class="fw-bold">App 5S</h2>
-            <p class="text-muted">Sistema de Auditoria Interna</p>
+            <!-- Alerta de Erro -->
+            @if (TemErro)
+            {
+                <div class="alert alert-danger d-flex align-items-center gap-2 py-2 px-3 rounded-3 small border-0 mb-4" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill flex-shrink-0"></i>
+                    <div>E-mail ou senha incorretos. Tente novamente.</div>
+                </div>
+            }
+
+            <!-- Formulário de Acesso -->
+<form method="post" action="/auth/login">
+    <div class="mb-3">
+        <label class="form-label small fw-semibold text-secondary">E-mail corporativo</label>
+        <div class="input-group">
+            <span class="input-group-text bg-white border-end-0 text-muted">
+                <i class="bi bi-envelope"></i>
+            </span>
+            <input type="email" name="email" class="form-control border-start-0 ps-0" 
+                   placeholder="nome@empresa.com" autocomplete="username" required />
         </div>
+    </div>
 
-        @if (TemErro)
-        {
-            <div class="alert alert-danger py-2" role="alert">
-                E-mail ou senha inválidos.
+    <div class="mb-4">
+        <label class="form-label small fw-semibold text-secondary">Senha</label>
+        <div class="input-group">
+            <span class="input-group-text bg-white border-end-0 text-muted">
+                <i class="bi bi-lock"></i>
+            </span>
+            <input type="password" name="senha" class="form-control border-start-0 ps-0" 
+                   placeholder="••••••••" autocomplete="current-password" required />
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary w-100 py-2 rounded-3 fw-semibold shadow-sm">
+        Acessar Plataforma
+    </button>
+</form>
+
+            <div class="text-center mt-4 pt-2 border-top">
+                <span class="text-muted" style="font-size: 0.75rem;">Sistema de Auditoria 5S • Versão 1.0</span>
             </div>
-        }
 
-        <form method="post" action="/api/auth/login">
-            <input type="hidden" name="returnUrl" value="@ReturnUrl" />
-
-            <div class="mb-3">
-                <label for="email" class="form-label fw-semibold">E-mail</label>
-                <input type="email" id="email" name="email" class="form-control" placeholder="exemplo@email.com" required autofocus />
-            </div>
-
-            <div class="mb-4">
-                <label for="senha" class="form-label fw-semibold">Senha</label>
-                <input type="password" id="senha" name="senha" class="form-control" placeholder="••••••••" required />
-            </div>
-
-            <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold">
-                Entrar
-            </button>
-        </form>
+        </div>
     </div>
 </div>
 
-<style>
-    .login-wrapper {
-        min-height: 80vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 1rem;
-    }
-    .login-card {
-        width: 100%;
-        max-width: 400px;
-        background: #ffffff;
-        border-radius: 10px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-        padding: 2rem;
-    }
-</style>
-
 @code {
-    [SupplyParameterFromQuery]
+    [SupplyParameterFromQuery(Name = "error")]
     private bool? Error { get; set; }
-
-    [SupplyParameterFromQuery]
-    private string? ReturnUrl { get; set; }
 
     private bool TemErro => Error == true;
 
@@ -76,18 +75,6 @@
         if (!existeUsuarios)
         {
             NavigationManager.NavigateTo("/setup");
-        }
-    }
-
-    private void RedirecionarAposLogin(string perfil)
-    {
-        if (perfil.Equals("Admin", StringComparison.OrdinalIgnoreCase))
-        {
-            NavigationManager.NavigateTo("/admin/usuarios", forceLoad: true);
-        }
-        else
-        {
-            NavigationManager.NavigateTo("/auditorias", forceLoad: true);
         }
     }
 }
